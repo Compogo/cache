@@ -2,18 +2,19 @@ package cache
 
 import (
 	"github.com/Compogo/compogo/container"
-	"github.com/Compogo/compogo/types"
+	"github.com/Compogo/types/linker"
+	"github.com/Compogo/types/mapper"
 	"github.com/eko/gocache/lib/v4/store"
 )
 
 var (
 	// drivers stores all registered cache drivers by their string names.
 	// Used for validation and listing available drivers.
-	drivers = types.NewMapper[Driver]()
+	drivers = mapper.NewMapper[Driver]()
 
 	// getters stores factory functions that create cache stores for each driver.
 	// The getter receives a container to resolve dependencies (config, clients, etc.).
-	getters = types.NewLinker[Driver, Getter]()
+	getters = linker.NewLinker[Driver, Getter]()
 )
 
 // Registration registers a new cache driver with its factory function.
