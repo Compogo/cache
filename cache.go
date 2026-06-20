@@ -4,22 +4,36 @@ import (
 	"fmt"
 
 	"github.com/Compogo/compogo"
-	"github.com/Compogo/compogo/container"
-	"github.com/Compogo/compogo/logger"
 	"github.com/eko/gocache/lib/v4/cache"
 	"github.com/eko/gocache/lib/v4/metrics"
 )
 
-// NewCache creates a new cache instance with the selected driver.
-// It:
-//   - Looks up the getter function for the configured driver
-//   - Creates the underlying store using the getter
-//   - Wraps it with Prometheus metrics (using the app name as a label)
-//   - Returns a cache.CacheInterface that can be used throughout the application
+// Cache — интерфейс кэша для хранения байтовых данных.
+// Обёртка над gocache.CacheInterface[[]byte] с поддержкой метрик Prometheus.
 //
-// The returned cache is generic over []byte, but gocache's cache.CacheInterface
-// can work with any serializable type through marshaling/unmarshaling.
-func NewCache(config *Config, appConfig *compogo.Config, logger logger.Logger, container container.Container) (cache.CacheInterface[[]byte], error) {
+// Используется для кэширования данных любого типа (сериализованных в JSON, Protobuf и т.д.).
+//
+// Пример:
+//
+//	var cacheInstance cache.Cache
+//	container.Invoke(func(c cache.Cache) { cacheInstance = c })
+//
+//	// Сохранение
+//	cacheInstance.Set(ctx, "user:123", []byte(`{"name":"John"}`), store.WithExpiration(time.Minute))
+//
+//	// Чтение
+//	data, err := cacheInstance.Get(ctx, "user:123")
+type Cache cache.CacheInterface[[]byte]
+
+// NewCache создаёт новый экземпляр кэша с указанным драйвером.
+// Автоматически добавляет метрики Prometheus для мониторинга.
+//
+// Процесс создания:
+//  1. Определяет драйвер из конфигурации
+//  2. Получает фабричную функцию (getter) для этого драйвера
+//  3. Создаёт store через getter (использует DI-контейнер)
+//  4. Оборачивает store в cache с метриками
+func NewCache(config *Config, appConfig *compogo.Config, logger compogo.Logger, container compogo.Container) (Cache, error) {
 	getter, err := getters.Get(config.Driver)
 	if err != nil {
 		return nil, fmt.Errorf("[cache] driver '%s' getter undefined: %w", config.Driver, err)
@@ -30,7 +44,7 @@ func NewCache(config *Config, appConfig *compogo.Config, logger logger.Logger, c
 		return nil, fmt.Errorf("[cache] driver '%s' create failed: %w", config.Driver, err)
 	}
 
-	logger.Infof("[cache] usage driver - '%s'", config.Driver)
+	logger.GetLogger("cache").Infof("usage driver - '%s'", config.Driver)
 
 	return cache.NewMetric[[]byte](
 		metrics.NewPrometheus(appConfig.Name),

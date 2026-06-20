@@ -1,45 +1,47 @@
 package cache
 
 import (
-	"github.com/Compogo/compogo/container"
+	"github.com/Compogo/compogo"
 	"github.com/Compogo/types/linker"
 	"github.com/Compogo/types/mapper"
 	"github.com/eko/gocache/lib/v4/store"
 )
 
 var (
-	// drivers stores all registered cache drivers by their string names.
-	// Used for validation and listing available drivers.
+	// drivers — маппер для хранения доступных драйверов кэша.
+	// Используется для отображения имени драйвера на его тип.
 	drivers = mapper.NewMapper[Driver]()
 
-	// getters stores factory functions that create cache stores for each driver.
-	// The getter receives a container to resolve dependencies (config, clients, etc.).
+	// getters — линкер для хранения фабричных функций драйверов.
+	// Используется для создания store по типу драйвера.
 	getters = linker.NewLinker[Driver, Getter]()
 )
 
-// Registration registers a new cache driver with its factory function.
-// This should be called from driver packages (e.g., redis, bigcache) during init().
+// Registration регистрирует драйвер кэша и его фабричную функцию.
+// Должна вызываться в init() каждого пакета драйвера.
 //
-// Example:
+// Пример регистрации Redis-драйвера:
 //
 //	func init() {
-//		cache.Registration("redis", NewRedisStore)
+//	    cache.Registration(cache.Driver("redis"), func(container compogo.Container) (store.StoreInterface, error) {
+//	        var redisClient *redis.Client
+//	        container.Invoke(func(r *redis.Client) { redisClient = r })
+//	        return redis.NewStore(redisClient), nil
+//	    })
 //	}
 func Registration(d Driver, getter Getter) {
 	drivers.Add(d)
 	getters.Add(d, getter)
 }
 
-// Getter is a factory function that creates a cache store from a DI container.
-// It receives the container to resolve any dependencies the store might need
-// (configuration, connections, etc.) and returns a store.StoreInterface.
-type Getter func(container container.Container) (store.StoreInterface, error)
+// Getter — фабричная функция для создания store кэша.
+// Принимает DI-контейнер для получения зависимостей драйвера.
+type Getter func(container compogo.Container) (store.StoreInterface, error)
 
-// Driver is a type-safe identifier for cache backends.
-// It implements fmt.Stringer for logging and display.
+// Driver — тип драйвера кэша (например, "redis", "memcached", "memory").
 type Driver string
 
-// String returns the driver name as a string.
+// String возвращает строковое представление драйвера.
 func (d Driver) String() string {
 	return string(d)
 }

@@ -5,29 +5,40 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Compogo/compogo/configurator"
+	"github.com/Compogo/compogo"
 )
 
 const (
-	DriverFieldName     = "cache.driver"
-	ExpirationFieldName = "cache.expiration"
+	// DriverFieldName имя драйвера кэша
+	DriverFieldName = "cache.driver"
 
+	// ExpirationFieldName время жизни данных по умолчанию
+	ExpirationFieldName = "cache.expiration"
+)
+
+var (
+	// DriverDefault драйвер по умолчанию (определяется при старте)
+	DriverDefault = ""
+
+	// ExpirationDefault время жизни по умолчанию
 	ExpirationDefault = 5 * time.Minute
 )
 
-var DriverDefault = ""
-
+// Config содержит конфигурацию кэша.
 type Config struct {
 	driver     string
 	Driver     Driver
 	Expiration time.Duration
 }
 
+// NewConfig создаёт новую конфигурацию.
 func NewConfig() *Config {
 	return &Config{}
 }
 
-func Configuration(config *Config, configurator configurator.Configurator) (*Config, error) {
+// Configuration загружает конфигурацию из Configurator.
+// Проверяет, что драйвер указан и зарегистрирован.
+func Configuration(config *Config, configurator compogo.Configurator) (*Config, error) {
 	if config.driver == "" || config.driver == DriverDefault {
 		configurator.SetDefault(DriverFieldName, DriverDefault)
 		config.driver = configurator.GetString(DriverFieldName)
